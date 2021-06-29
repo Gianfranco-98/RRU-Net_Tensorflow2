@@ -8,7 +8,7 @@ import tensorflow as tf
 
 # Data
 from configuration import *
-from data import Forgery_Detection_Dataset, Augmentation
+from dataset import Forgery_Detection_Dataset, Augmentation
 
 # Images
 import matplotlib.pyplot as plt
