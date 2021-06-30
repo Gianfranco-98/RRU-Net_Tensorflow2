@@ -2,6 +2,7 @@
 
 import tensorflow as tf
 from tensorflow.keras import Model
+from network_utils import *
 
 
 class Unet(Model):
