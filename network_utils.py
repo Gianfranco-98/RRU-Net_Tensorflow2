@@ -13,12 +13,14 @@ class U_double_conv(Model):
     def __init__(self, in_ch, out_ch):
         super(U_double_conv, self).__init__()
         self.conv = Sequential(
-            Conv2D(out_ch, 3, padding='same'),
-            BatchNormalization(),
-            ReLU(),
-            Conv2D(out_ch, 3, padding='same'),
-            BatchNormalization(),
-            ReLU()
+            layers=(
+                Conv2D(out_ch, 3, padding='same'),
+                BatchNormalization(),
+                ReLU(),
+                Conv2D(out_ch, 3, padding='same'),
+                BatchNormalization(),
+                ReLU()
+            )
         )
 
     def call(self, x):
@@ -40,8 +42,10 @@ class U_down(Model):
     def __init__(self, in_ch, out_ch):
         super(U_down, self).__init__()
         self.mpconv = Sequential(
-            MaxPool2d(pool_size=(2, 2), strides=(2, 2)),
-            U_double_conv(in_ch, out_ch)
+            layers=(
+                MaxPool2d(pool_size=(2, 2), strides=(2, 2)),
+                U_double_conv(in_ch, out_ch)
+            )
         )
 
     def call(self, x):
@@ -81,11 +85,14 @@ class RU_double_conv(Model):
     def __init__(self, in_ch, out_ch):
         super(RU_double_conv, self).__init__()
         self.conv = Sequential(
-            Conv2D(out_ch, 3, padding='same'),
-            BatchNormalization(),
-            ReLU(),
-            Conv2D(out_ch, 3, padding='same'),
-            BatchNormalization())
+            layers=(
+                Conv2D(out_ch, 3, padding='same'),
+                BatchNormalization(),
+                ReLU(),
+                Conv2D(out_ch, 3, padding='same'),
+                BatchNormalization()
+            )
+        )
 
     def call(self, x):
         x = self.conv(x)
@@ -98,8 +105,11 @@ class RU_first_down(Model):
         self.conv = RU_double_conv(in_ch, out_ch)
         self.relu = ReLU()
         self.res_conv = Sequential(
-            Conv2D(out_ch, 1, use_bias=False),
-            BatchNormalization())
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                BatchNormalization()
+            )
+        )
 
     def call(self, x):
         # the first ring conv
@@ -116,8 +126,11 @@ class RU_down(Model):
         self.conv = RU_double_conv(in_ch, out_ch)
         self.relu = ReLU()
         self.res_conv = Sequential(
-            Conv2D(out_ch, 1, use_bias=False),
-            BatchNormalization())
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                BatchNormalization()
+            )
+        )
 
     def call(self, x):
         x = self.maxpool(x)
@@ -142,8 +155,11 @@ class RU_up(Model):
         self.conv = RU_double_conv(in_ch, out_ch)
         self.relu = ReLU()
         self.res_conv = Sequential(
-            Conv2D(out_ch, 1, use_bias=False),
-            GroupNormalization())
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
+        )
 
     def call(self, x1, x2):
         x1 = self.up(x1)
@@ -167,11 +183,13 @@ class RRU_double_conv(Model):
     def __init__(self, in_ch, out_ch):
         super(RRU_double_conv, self).__init__()
         self.conv = Sequential(
-            Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
-            GroupNormalization(),
-            ReLU(),
-            Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
-            GroupNormalization()
+            layers=(
+                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
+                    GroupNormalization(),
+                    ReLU(),
+                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
+                    GroupNormalization()
+            )
         )
 
     def call(self, x):
@@ -186,11 +204,15 @@ class RRU_first_down(Model):
         self.relu = ReLU()
 
         self.res_conv = Sequential(
-            Conv2D(out_ch, 1, use_bias=False),
-            GroupNormalization()
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
         )
         self.res_conv_back = Sequential(
-            Conv2D(in_ch, 1, use_bias=False)             
+            layers=(
+                Conv2D(in_ch, 1, use_bias=False)             
+            )
         )
 
     def call(self, x):
@@ -215,10 +237,16 @@ class RRU_down(Model):
         self.pool = MaxPool2d(pool_size=(3, 3), strides=(2, 2), padding='same')
 
         self.res_conv = Sequential(
-            Conv2D(out_ch, 1, use_bias=False),
-            GroupNormalization())
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
+        )
         self.res_conv_back = Sequential(
-            Conv2D(in_ch, 1, use_bias=False))
+            layers=(
+                Conv2D(in_ch, 1, use_bias=False)
+            )
+        )
 
     def call(self, x):
         x = self.pool(x)
@@ -242,17 +270,26 @@ class RRU_up(Model):
             self.up = UpSampling2D(size=(2, 2), mode='bilinear')                    # align_corners missing
         else:
             self.up = Sequential(
-                Conv2DTranspose(in_ch//2, 2, strides=(2, 2)),
-                GroupNormalization())
+                layers=(
+                    Conv2DTranspose(in_ch//2, 2, strides=(2, 2)),
+                    GroupNormalization()
+                )
+            )
 
         self.conv = RRU_double_conv(in_ch, out_ch)
         self.relu = ReLU()
 
         self.res_conv = Sequential(
-            Conv2D(out_ch, 1, use_bias=False),
-            GroupNormalization())
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
+        )
         self.res_conv_back = Sequential(
-            Conv2D(in_ch, 1, use_bias=False))
+            layers=(
+                Conv2D(in_ch, 1, use_bias=False)
+            )
+        )
 
     def call(self, x1, x2):
         x1 = self.up(x1)
