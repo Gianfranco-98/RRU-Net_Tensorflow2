@@ -43,7 +43,7 @@ class U_down(Model):
         super(U_down, self).__init__()
         self.mpconv = Sequential(
             layers=(
-                MaxPool2d(pool_size=(2, 2), strides=(2, 2)),
+                MaxPool2D(pool_size=(2, 2), strides=(2, 2)),
                 U_double_conv(in_ch, out_ch)
             )
         )
@@ -122,7 +122,7 @@ class RU_first_down(Model):
 class RU_down(Model):
     def __init__(self, in_ch, out_ch):
         super(RU_down, self).__init__()
-        self.maxpool = MaxPool2d(pool_size=(3, 3), strides=(2, 2), padding='same')
+        self.maxpool = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='same')
         self.conv = RU_double_conv(in_ch, out_ch)
         self.relu = ReLU()
         self.res_conv = Sequential(
@@ -234,7 +234,7 @@ class RRU_down(Model):
         super(RRU_down, self).__init__()
         self.conv = RRU_double_conv(in_ch, out_ch)
         self.relu = ReLU()
-        self.pool = MaxPool2d(pool_size=(3, 3), strides=(2, 2), padding='same')
+        self.pool = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='same')
 
         self.res_conv = Sequential(
             layers=(
