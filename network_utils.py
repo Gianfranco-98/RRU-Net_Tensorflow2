@@ -68,11 +68,11 @@ class U_up(Model):
 
     def call(self, x1, x2):
         x1 = self.up(x1)
-        diffX = x2.size()[2] - x1.size()[2]
-        diffY = x2.size()[3] - x1.size()[3]
-        paddings = tf.constant([diffY, 0], [diffX, 0])                              # Pay attention to RAM
+        diffX = x2.shape[2] - x1.shape[2]
+        diffY = x2.shape[3] - x1.shape[3]
+        paddings = tf.constant([[0, 0], [0, 0], [diffX, 0], [diffY, 0]])    # Pay attention to RAM
 
-        x1 = tf.pad(x1, paddings)                                                   # ?
+        x1 = tf.pad(x1, paddings)                                                   
         x = tf.concat([x2, x1], axis=1)
 
         x = self.conv(x)
@@ -163,11 +163,11 @@ class RU_up(Model):
 
     def call(self, x1, x2):
         x1 = self.up(x1)
-        diffX = x2.size()[2] - x1.size()[2]
-        diffY = x2.size()[3] - x1.size()[3]
-        paddings = tf.constant([diffY, 0], [diffX, 0])                              # Pay attention to RAM
+        diffX = x2.shape[2] - x1.shape[2]
+        diffY = x2.shape[3] - x1.shape[3]
+        paddings = tf.constant([[0, 0], [0, 0], [diffX, 0], [diffY, 0]])    # Pay attention to RAM
 
-        x1 = tf.pad(x1, paddings)                                                   # ?
+        x1 = tf.pad(x1, paddings)                                                   
         x = tf.concat([x2, x1], axis=1)
 
         # the first ring conv
@@ -293,13 +293,13 @@ class RRU_up(Model):
 
     def call(self, x1, x2):
         x1 = self.up(x1)
-        diffX = x2.size()[2] - x1.size()[2]
-        diffY = x2.size()[3] - x1.size()[3]
-        paddings = tf.constant([diffY, 0], [diffX, 0])                              # Pay attention to RAM
+        diffX = x2.shape[2] - x1.shape[2]
+        diffY = x2.shape[3] - x1.shape[3]
+        paddings = tf.constant([[0, 0], [0, 0], [diffX, 0], [diffY, 0]])    # Pay attention to RAM
 
-        x1 = tf.pad(x1, paddings)                                                   # ?
+        x1 = tf.pad(x1, paddings)
 
-        x = self.relu(tf.concat([x2, x1], axis=1))
+        x = self.relu(tf.concat([x2, x1], axis=-1))
 
         # the first ring conv
         ft1 = self.conv(x)
