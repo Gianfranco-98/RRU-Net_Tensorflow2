@@ -74,7 +74,6 @@ class Forgery_Detection_Dataset:
                 pristine_img = cv2.resize(pristine_img, IMG_SHAPE) 
             forgery_img = self.get_image(img_id, "forgery") / 255.
             gt_img = self.get_image(img_id, "ground_truth") / 255.
-            gt_img = cv2.cvtColor(gt_img, cv2.COLOR_BGR2GRAY)
 
             # Resize
             if mode != "test":
