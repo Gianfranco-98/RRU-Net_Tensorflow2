@@ -13,7 +13,7 @@ import os
 
 class Forgery_Detection_Dataset:
 
-    def __init__(self, augmentation=False):
+    def __init__(self):
         
         self.name = DATASET_NAME
 
@@ -32,9 +32,6 @@ class Forgery_Detection_Dataset:
         self.train_ids = self.ids[:train_indices]
         self.val_ids = self.ids[train_indices:val_indices]
         self.test_ids = self.ids[val_indices:test_indices]
-
-        # Dataset augmentation setting
-        self.augmentation = Augmentation.random_overturn if augmentation else None
 
     def __len__(self):
 
@@ -80,43 +77,7 @@ class Forgery_Detection_Dataset:
                 forgery_img = cv2.resize(forgery_img, IMG_SHAPE)
                 gt_img = cv2.resize(gt_img, IMG_SHAPE)
 
-            # Augment
-            if self.augmentation is not None:
-                forgery_img, gt_img = self.augmentation(forgery_img, gt_img)
-
             if mode == "example":
                 yield forgery_img, gt_img, pristine_img
             else:
                 yield forgery_img, gt_img
-
-
-class Augmentation:
-
-    def __init__(self, compression_quality=COMPRESSION_QUALITY):
-        self.compression_quality = compression_quality
-
-    @staticmethod
-    def gaussian_noise(image, variance=NOISE_VARIANCE):
-        return random_noise(np.array(image), mode='gaussian', mean=0, var=variance, clip=True)       #TODO: replace with tf.random.normal function
-
-    # TODO
-    def jpeg_compression(self, image):
-        pass                            
-
-    @staticmethod
-    def random_overturn(img, gt_img):
-        cointoss1 = random.choice(range(10))
-        cointoss2 = random.choice(range(10))
-        if cointoss1 >= 5:
-            if cointoss2 >= 5:
-                img = tf.image.flip_left_right(img)
-                gt_img = tf.image.flip_left_right(gt_img)
-            else:
-                img = tf.image.flip_up_down(img)
-                gt_img = tf.image.flip_up_down(gt_img)
-        
-        return img, gt_img
-
-    def complete_augmentation(self, image):
-        image = self.random_overturn(self.gaussian_noise(image))
-        return image        
