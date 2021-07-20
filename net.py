@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import \
@@ -40,19 +38,16 @@ class RRU_double_conv(Model):
         super(RRU_double_conv, self).__init__()
         self.conv = Sequential(
             layers=(
-                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
+                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),               
                     GroupNormalization(),
                     ReLU(),
-                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
+                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                
                     GroupNormalization()
             )
         )
 
     def call(self, x):
-        print("DEBUG RRU_double_conv")
-        print("x shape:", x.shape)
         x = self.conv(x)
-        print("new x shape:", x.shape)
         return x
 
 
@@ -75,24 +70,15 @@ class RRU_first_down(Model):
         )
 
     def call(self, x):
-        print("DEBUG RRU_first_down")
         # the first ring conv
-        print("x shape:", x.shape)
         ft1 = self.conv(x)
-        print("ft1 shape:", ft1.shape)
         r1 = self.relu(ft1 + self.res_conv(x))
-        print("r1 shape:", r1.shape)
         # the second ring conv
         ft2 = self.res_conv_back(r1)
-        print("ft2 shape:", ft2.shape)
-        print("(1+F.sigmoid(ft2)) shape:", (1+F.sigmoid(ft2)).shape)
         x = tf.math.multiply(1 + tf.math.sigmoid(ft2), x)
-        print("new x shape:", x.shape)
         # the third ring conv
         ft3 = self.conv(x)
-        print("ft3 shape:", ft3.shape)
         r3 = self.relu(ft3 + self.res_conv(x))
-        print("r3 shape:", r3.shape)
 
         return r3
 
@@ -117,26 +103,16 @@ class RRU_down(Model):
         )
 
     def call(self, x):
-        print("DEBUG RRU_down")
-        print("x shape:", x.shape)
         x = self.pool(x)
-        print("new x shape:", x.shape)
         # the first ring conv
         ft1 = self.conv(x)
-        print("ft1 shape:", ft1.shape)
         r1 = self.relu(ft1 + self.res_conv(x))
-        print("r1 shape:", r1.shape)
         # the second ring conv
         ft2 = self.res_conv_back(r1)
-        print("ft2 shape:", ft2.shape)
-        print("1 + F.sigmoid(ft2) shape:", (1 + F.sigmoid(ft2)).shape)
         x = tf.math.multiply(1 + tf.math.sigmoid(ft2), x)
-        print("new x shape:", x.shape)
         # the third ring conv
         ft3 = self.conv(x)
-        print("ft3.shape:", ft3.shape)
         r3 = self.relu(ft3 + self.res_conv(x))
-        print("r3 shape:", r3.shape)
 
         return r3
 
@@ -170,37 +146,24 @@ class RRU_up(Model):
         )
 
     def call(self, x1, x2):
-        print("DEBUG RRU_up")
-        print("x1 shape:", x1.shape)
-        print("x2 shape:", x2.shape)
         x1 = self.up(x1)
-        print("new x1 shape:", x1.shape)
         diffX = x2.shape[2] - x1.shape[2]
         diffY = x2.shape[3] - x1.shape[3]
-        print("diffX, diffY =", diffX, diffY)
         paddings = [[0, 0], [0, 0], [diffX, 0], [diffY, 0]]
 
         x1 = tf.pad(x1, paddings)
-        print("x1 padded shape:", x1.shape)                                                   
 
-        x = self.relu(tf.concat([x2, x1], axis=1))
-        print("x shape:", x.shape)
+        x = self.relu(tf.concat([x2, x1], axis=-1))
 
         # the first ring conv
         ft1 = self.conv(x)
-        print("ft1 shape:", ft1.shape)
         r1 = self.relu(self.res_conv(x) + ft1)
-        print("r1.shape", r1.shape)
         # the second ring conv
         ft2 = self.res_conv_back(r1)
-        print("ft2 shape:", ft2.shape)
         x = tf.math.multiply(1 + tf.math.sigmoid(ft2), x)
-        print("new x shape:", x.shape)
         # the third ring conv
         ft3 = self.conv(x)
-        print("ft3 shape:", ft3.shape)
         r3 = self.relu(ft3 + self.res_conv(x))
-        print("r3 shape:", r3.shape)
 
         return r3
 
@@ -213,8 +176,5 @@ class outconv(Model):
         self.conv = Conv2D(out_ch, 1)
 
     def call(self, x):
-        print("DEBUG outconv")
-        print("x shape:", x.shape)
         x = self.conv(x)
-        print("new x shape:", x.shape)
         return x
