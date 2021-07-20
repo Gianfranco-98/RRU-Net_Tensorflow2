@@ -1,71 +1,15 @@
 #!/usr/bin/env python3
 
 import tensorflow as tf
-from tensorflow.keras import Model
-from network_utils import *
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras.layers import \
+    Conv2D, Conv2DTranspose, BatchNormalization, ReLU, MaxPool2D, UpSampling2D
+from tensorflow_addons.layers import GroupNormalization
 
 
-class Unet(Model):
-
-    def __init__(self, n_channels, n_classes):
-        super(Unet, self).__init__()
-        self.inc = inconv(n_channels, 64)
-        self.down1 = U_down(64, 128)
-        self.down2 = U_down(128, 256)
-        self.down3 = U_down(256, 512)
-        self.down4 = U_down(512, 512)
-        self.up1 = U_up(1024, 256)
-        self.up2 = U_up(512, 128)
-        self.up3 = U_up(256, 64)
-        self.up4 = U_up(128, 64)
-        self.out = outconv(64, n_classes)
-
-    def call(self, x):
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-        x = self.out(x)
-        return x
-
-
-class Res_Unet(Model):
-    def __init__(self, n_channels, n_classes):
-        super(Res_Unet, self).__init__()
-        self.down = RU_first_down(n_channels, 32)
-        self.down1 = RU_down(32, 64)
-        self.down2 = RU_down(64, 128)
-        self.down3 = RU_down(128, 256)
-        self.down4 = RU_down(256, 256)
-        self.up1 = RU_up(512, 128)
-        self.up2 = RU_up(256, 64)
-        self.up3 = RU_up(128, 32)
-        self.up4 = RU_up(64, 32)
-        self.out = outconv(32, n_classes)
-
-    def call(self, x):
-        x1 = self.down(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-        x = self.out(x)
-        return x
-
-
-class Ringed_Res_Unet(Model):
+class RRU_Net(Model):
     def __init__(self, n_channels=3, n_classes=1):
-        super(Ringed_Res_Unet, self).__init__()
+        super(RRU_Net, self).__init__()
         self.down = RRU_first_down(n_channels, 32)
         self.down1 = RRU_down(32, 64)
         self.down2 = RRU_down(64, 128)
@@ -88,4 +32,189 @@ class Ringed_Res_Unet(Model):
         x = self.up3(x, x2)
         x = self.up4(x, x1)
         x = self.out(x)
+        return x
+
+
+class RRU_double_conv(Model):
+    def __init__(self, in_ch, out_ch):
+        super(RRU_double_conv, self).__init__()
+        self.conv = Sequential(
+            layers=(
+                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
+                    GroupNormalization(),
+                    ReLU(),
+                    Conv2D(out_ch, 3, padding='same', dilation_rate=(2, 2)),                # padding = 2 ?
+                    GroupNormalization()
+            )
+        )
+
+    def call(self, x):
+        print("DEBUG RRU_double_conv")
+        print("x shape:", x.shape)
+        x = self.conv(x)
+        print("new x shape:", x.shape)
+        return x
+
+
+class RRU_first_down(Model):
+    def __init__(self, in_ch, out_ch):
+        super(RRU_first_down, self).__init__()
+        self.conv = RRU_double_conv(in_ch, out_ch)
+        self.relu = ReLU()
+
+        self.res_conv = Sequential(
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
+        )
+        self.res_conv_back = Sequential(
+            layers=(
+                Conv2D(in_ch, 1, use_bias=False)             
+            )
+        )
+
+    def call(self, x):
+        print("DEBUG RRU_first_down")
+        # the first ring conv
+        print("x shape:", x.shape)
+        ft1 = self.conv(x)
+        print("ft1 shape:", ft1.shape)
+        r1 = self.relu(ft1 + self.res_conv(x))
+        print("r1 shape:", r1.shape)
+        # the second ring conv
+        ft2 = self.res_conv_back(r1)
+        print("ft2 shape:", ft2.shape)
+        print("(1+F.sigmoid(ft2)) shape:", (1+F.sigmoid(ft2)).shape)
+        x = tf.math.multiply(1 + tf.math.sigmoid(ft2), x)
+        print("new x shape:", x.shape)
+        # the third ring conv
+        ft3 = self.conv(x)
+        print("ft3 shape:", ft3.shape)
+        r3 = self.relu(ft3 + self.res_conv(x))
+        print("r3 shape:", r3.shape)
+
+        return r3
+
+
+class RRU_down(Model):
+    def __init__(self, in_ch, out_ch):
+        super(RRU_down, self).__init__()
+        self.conv = RRU_double_conv(in_ch, out_ch)
+        self.relu = ReLU()
+        self.pool = MaxPool2D(pool_size=(3, 3), strides=(2, 2), padding='same')
+
+        self.res_conv = Sequential(
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
+        )
+        self.res_conv_back = Sequential(
+            layers=(
+                Conv2D(in_ch, 1, use_bias=False)
+            )
+        )
+
+    def call(self, x):
+        print("DEBUG RRU_down")
+        print("x shape:", x.shape)
+        x = self.pool(x)
+        print("new x shape:", x.shape)
+        # the first ring conv
+        ft1 = self.conv(x)
+        print("ft1 shape:", ft1.shape)
+        r1 = self.relu(ft1 + self.res_conv(x))
+        print("r1 shape:", r1.shape)
+        # the second ring conv
+        ft2 = self.res_conv_back(r1)
+        print("ft2 shape:", ft2.shape)
+        print("1 + F.sigmoid(ft2) shape:", (1 + F.sigmoid(ft2)).shape)
+        x = tf.math.multiply(1 + tf.math.sigmoid(ft2), x)
+        print("new x shape:", x.shape)
+        # the third ring conv
+        ft3 = self.conv(x)
+        print("ft3.shape:", ft3.shape)
+        r3 = self.relu(ft3 + self.res_conv(x))
+        print("r3 shape:", r3.shape)
+
+        return r3
+
+
+class RRU_up(Model):
+    def __init__(self, in_ch, out_ch, bilinear=False):
+        super(RRU_up, self).__init__()
+        if bilinear:
+            self.up = UpSampling2D(size=(2, 2), mode='bilinear')                    
+        else:
+            self.up = Sequential(
+                layers=(
+                    Conv2DTranspose(in_ch//2, 2, strides=(2, 2)),
+                    GroupNormalization()
+                )
+            )
+
+        self.conv = RRU_double_conv(in_ch, out_ch)
+        self.relu = ReLU()
+
+        self.res_conv = Sequential(
+            layers=(
+                Conv2D(out_ch, 1, use_bias=False),
+                GroupNormalization()
+            )
+        )
+        self.res_conv_back = Sequential(
+            layers=(
+                Conv2D(in_ch, 1, use_bias=False)
+            )
+        )
+
+    def call(self, x1, x2):
+        print("DEBUG RRU_up")
+        print("x1 shape:", x1.shape)
+        print("x2 shape:", x2.shape)
+        x1 = self.up(x1)
+        print("new x1 shape:", x1.shape)
+        diffX = x2.shape[2] - x1.shape[2]
+        diffY = x2.shape[3] - x1.shape[3]
+        print("diffX, diffY =", diffX, diffY)
+        paddings = [[0, 0], [0, 0], [diffX, 0], [diffY, 0]]
+
+        x1 = tf.pad(x1, paddings)
+        print("x1 padded shape:", x1.shape)                                                   
+
+        x = self.relu(tf.concat([x2, x1], axis=1))
+        print("x shape:", x.shape)
+
+        # the first ring conv
+        ft1 = self.conv(x)
+        print("ft1 shape:", ft1.shape)
+        r1 = self.relu(self.res_conv(x) + ft1)
+        print("r1.shape", r1.shape)
+        # the second ring conv
+        ft2 = self.res_conv_back(r1)
+        print("ft2 shape:", ft2.shape)
+        x = tf.math.multiply(1 + tf.math.sigmoid(ft2), x)
+        print("new x shape:", x.shape)
+        # the third ring conv
+        ft3 = self.conv(x)
+        print("ft3 shape:", ft3.shape)
+        r3 = self.relu(ft3 + self.res_conv(x))
+        print("r3 shape:", r3.shape)
+
+        return r3
+
+
+# !!!!!!!!!!!! Universal functions !!!!!!!!!!!!
+
+class outconv(Model):
+    def __init__(self, in_ch, out_ch):
+        super(outconv, self).__init__()
+        self.conv = Conv2D(out_ch, 1)
+
+    def call(self, x):
+        print("DEBUG outconv")
+        print("x shape:", x.shape)
+        x = self.conv(x)
+        print("new x shape:", x.shape)
         return x
