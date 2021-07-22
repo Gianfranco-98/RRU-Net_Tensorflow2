@@ -43,20 +43,14 @@ class Forgery_Detection_Dataset:
         
     def get_image(self, img_id, category=None):
 
-        if self.name == 'CASIA':
-            suffix = '.jpg'
-        elif self.name == 'Spliced_COCO':
-            suffix = '_rgb.jpg'
+        suffix = '.jpg'
         if category == "pristine" or category is None:
             directory = self.pristine_dir
         elif category == "forgery":
             directory = self.forgered_dir
         elif category == "ground_truth":
             directory = self.ground_truth_dir
-            if self.name == 'CASIA':
-                suffix = '_gt.png'
-            elif self.name == 'Spliced_COCO':
-                suffix = '_mask.png'
+            suffix = '_gt.png'
         else:
             raise ValueError("Wrong category type")
 
