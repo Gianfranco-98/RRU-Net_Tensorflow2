@@ -1,3 +1,5 @@
+# Implementation in Tensorflow-2. of "https://github.com/yelusaleng/RRU-Net"
+
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import \
@@ -167,8 +169,6 @@ class RRU_up(Model):
 
         return r3
 
-
-# !!!!!!!!!!!! Universal functions !!!!!!!!!!!!
 
 class outconv(Model):
     def __init__(self, in_ch, out_ch):
