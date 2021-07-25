@@ -54,9 +54,8 @@ class Forgery_Detection_Dataset:
                 gt_img = 1 - gt_img
 
             # Resize
-            if mode != "test":
-                forgery_img = cv2.resize(forgery_img, IMG_SHAPE)
-                gt_img = cv2.resize(gt_img, IMG_SHAPE)
+            forgery_img = cv2.resize(forgery_img, IMG_SHAPE)
+            gt_img = cv2.resize(gt_img, IMG_SHAPE)
 
             if mode == "example":
                 yield forgery_img, gt_img, pristine_img
